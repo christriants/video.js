@@ -2819,8 +2819,12 @@ class Player extends Component {
     if (percentAsDecimal !== undefined) {
       // Force value to between 0 and 1
       vol = Math.max(0, Math.min(1, percentAsDecimal));
+      const techVolume = this.options_.logarithmicVolume ?
+        this.linearToLog_(vol) :
+        vol;
+
       this.cache_.volume = vol;
-      this.techCall_('setVolume', vol);
+      this.techCall_('setVolume', techVolume);
 
       if (vol > 0) {
         this.lastVolume_(vol);
@@ -2829,9 +2833,61 @@ class Player extends Component {
       return;
     }
 
+    const techVol = parseFloat(this.techGet_('volume'));
+
     // Default to 1 when returning current volume.
-    vol = parseFloat(this.techGet_('volume'));
-    return (isNaN(vol)) ? 1 : vol;
+    if (this.options_.logarithmicVolume) {
+      vol = isNaN(techVol) ? 1 : this.logToLinear_(techVol);
+    } else {
+      vol = isNaN(techVol) ? 1 : techVol;
+    }
+
+    return vol;
+  }
+
+  /**
+   * Convert linear volume (0-1) to logarithmic volume (0-1)
+   * Uses proper decibel scaling for accurate perceptual volume
+   *
+   * @private
+   * @param {number} linear - Linear volume from 0 to 1
+   * @return {number} Logarithmic volume from 0 to 1
+   */
+  linearToLog_(linear) {
+    if (linear === 0) {
+      return 0;
+    }
+    if (linear === 1) {
+      return 1;
+    }
+
+    // Use 50dB range (good balance between resolution and range)
+    const dbRange = 50;
+    const offset = Math.pow(10, -dbRange / 20);
+
+    return Math.pow(10, (linear * dbRange - dbRange) / 20) * (1 + offset);
+  }
+
+  /**
+   * Convert logarithmic volume (0-1) to linear volume (0-1)
+   * Inverse of linearToLog_ using decibel scaling
+   *
+   * @private
+   * @param {number} logarithmic - Logarithmic volume from 0 to 1
+   * @return {number} Linear volume from 0 to 1
+   */
+  logToLinear_(logarithmic) {
+    if (logarithmic === 0) {
+      return 0;
+    }
+    if (logarithmic === 1) {
+      return 1;
+    }
+
+    const dbRange = 50;
+    const offset = Math.pow(10, -dbRange / 20);
+
+    return (20 * Math.log10(logarithmic / (1 + offset) + offset) + dbRange) / dbRange;
   }
 
   /**
@@ -5551,10 +5607,17 @@ Player.prototype.options_ = {
     'resizeManager'
   ],
 
-  language: navigator && (navigator.languages && navigator.languages[0] || navigator.userLanguage || navigator.language) || 'en',
+  language:
+    (navigator &&
+      ((navigator.languages && navigator.languages[0]) ||
+        navigator.userLanguage ||
+        navigator.language)) ||
+    'en',
 
   // locales and their language translations
   languages: {},
+
+  logarithmicVolume: false,
 
   // Default message to show when a video cannot be played.
   notSupportedMessage: 'No compatible source was found for this media.',

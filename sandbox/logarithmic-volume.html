@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Video.js Sandbox</title>
+    <link href="../dist/video-js.css" rel="stylesheet" />
+  </head>
+  <body>
+    <h1>Testing Logarithmic Volume</h1>
+
+    <h2>Linear (Default)</h2>
+    <video
+      id="linear-video"
+      class="video-js vjs-default-skin"
+      controls
+      preload="auto"
+      width="640"
+      height="264"
+    >
+      <source src="https://vjs.zencdn.net/v/oceans.mp4" type="video/mp4" />
+    </video>
+
+    <h2>Logarithmic</h2>
+    <video
+      id="log-video"
+      class="video-js vjs-default-skin"
+      controls
+      preload="auto"
+      width="640"
+      height="264"
+    >
+      <source src="https://vjs.zencdn.net/v/oceans.mp4" type="video/mp4" />
+    </video>
+
+    <h2>Test Controls</h2>
+    <div id="test-controls">
+      <h3>Linear Player</h3>
+      <button onclick="testVolume('linear', 0.5)">Set 50% (Linear)</button>
+      <button onclick="logVolume('linear')">Log Volume</button>
+      <p>Volume: <span id="linear-volume">-</span></p>
+      <p>Slider Position: <span id="linear-slider">-</span></p>
+
+      <h3>Logarithmic Player</h3>
+      <button onclick="testVolume('log', 0.5)">Set 50% (Perceptual)</button>
+      <button onclick="logVolume('log')">Log Volume</button>
+      <p>Volume: <span id="log-volume">-</span></p>
+      <p>Slider Position: <span id="log-slider">-</span></p>
+    </div>
+
+    <script src="../dist/video.js"></script>
+    <script>
+      const linearPlayer = videojs("linear-video", {
+        logarithmicVolume: false,
+      });
+
+      const logPlayer = videojs("log-video", {
+        logarithmicVolume: true,
+      });
+
+      function testVolume(type, value) {
+        const player = type === "linear" ? linearPlayer : logPlayer;
+        player.volume(value);
+        updateDisplay(type);
+      }
+
+      function logVolume(type) {
+        const player = type === "linear" ? linearPlayer : logPlayer;
+        console.log(`${type} player volume:`, player.volume());
+        updateDisplay(type);
+      }
+
+      function updateDisplay(type) {
+        const player = type === "linear" ? linearPlayer : logPlayer;
+        const volumeSpan = document.getElementById(`${type}-volume`);
+        const sliderSpan = document.getElementById(`${type}-slider`);
+
+        volumeSpan.textContent = (player.volume() * 100).toFixed(2) + "%";
+
+        const volumeBar = player.controlBar.volumePanel.volumeControl.volumeBar;
+        const sliderPos = volumeBar.getPercent();
+        sliderSpan.textContent = (sliderPos * 100).toFixed(2) + "%";
+      }
+
+      linearPlayer.on("volumechange", () => updateDisplay("linear"));
+      logPlayer.on("volumechange", () => updateDisplay("log"));
+
+      linearPlayer.ready(() => updateDisplay("linear"));
+      logPlayer.ready(() => updateDisplay("log"));
+    </script>
+  </body>
+</html>
